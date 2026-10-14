@@ -1,17 +1,21 @@
-// State
+// State Management
 let currentSessionId = null;
 let currentRound = "greeting";
 let isVoiceEnabled = true;
 let voiceRate = 1.0;
 let userApiKey = localStorage.getItem("coach_api_key") || "";
-let skills = ["Python", "FastAPI", "React", "PostgreSQL", "Docker"];
+let activeProvider = localStorage.getItem("coach_provider") || "gemini";
+let skills = ["Python", "FastAPI", "React", "PostgreSQL", "Docker", "Redis"];
 let hobbies = ["Competitive Programming", "Chess", "Open Source"];
+
 let radarChartInstance = null;
 let progressChartInstance = null;
 let recognition = null;
 let isRecording = false;
+let audioAnimFrame = null;
+let isSynthesizing = false;
 
-// DOM Elements
+// DOM Cache
 const stepSetup = document.getElementById("stepSetup");
 const stepArena = document.getElementById("stepArena");
 const stepReport = document.getElementById("stepReport");
@@ -49,9 +53,19 @@ const btnCloseSettings = document.getElementById("btnCloseSettings");
 const btnSaveSettings = document.getElementById("btnSaveSettings");
 const inputApiKey = document.getElementById("inputApiKey");
 const selectVoiceRate = document.getElementById("selectVoiceRate");
+const engineProviderSelect = document.getElementById("engineProviderSelect");
+const modalProviderSelect = document.getElementById("modalProviderSelect");
 const btnRetake = document.getElementById("btnRetake");
 
-// Sample Resume for Instant 1-Click Judging & Demonstration
+// STAR Live Nodes
+const starNodes = {
+  situation: document.getElementById("starSituation"),
+  task: document.getElementById("starTask"),
+  action: document.getElementById("starAction"),
+  result: document.getElementById("starResult")
+};
+
+// Poornima College CS Sample Resume
 const SAMPLE_PCE_RESUME = `
 ADITYA SHARMA
 Email: aditya.sharma@example.com | Phone: +91 98765 43210
@@ -60,38 +74,42 @@ Jaipur, Rajasthan | LinkedIn: linkedin.com/in/adityasharma | GitHub: github.com/
 EDUCATION
 Poornima College of Engineering, Jaipur
 Bachelor of Technology in Computer Science & Engineering (B.Tech CSE)
-CGPA: 8.7 / 10.0 (2022 - 2026)
-Relevant Coursework: Data Structures & Algorithms, Object-Oriented Programming, Database Management Systems, Operating Systems, Computer Networks.
+CGPA: 8.8 / 10.0 (2022 - 2026)
+Relevant Coursework: Data Structures & Algorithms, Object-Oriented Programming, Database Management Systems, Operating Systems, Computer Networks, Distributed Computing.
 
 TECHNICAL SKILLS
-Languages: Python, JavaScript, TypeScript, C++, SQL
+Languages: Python, JavaScript, TypeScript, C++, SQL, Go
 Frameworks & Libraries: FastAPI, Node.js, Express, React, Tailwind CSS
 Databases & Cache: PostgreSQL, MongoDB, Redis, SQLite
 Tools & DevOps: Docker, Git, GitHub Actions, Linux, Nginx, Postman
-Core Concepts: REST APIs, System Design, Concurrency, Microservices
+Core Competencies: REST APIs, System Design, Concurrency, Microservices, Caching Architectures
 
 PROJECTS
-1. Smart Attendance & Automated Assessment System (FastAPI, React, OpenCV)
-- Built high-performance microservices backend handling 500+ requests/min with sub-80ms response time.
-- Integrated Redis caching for frequent queries, decreasing database load by 45%.
-2. Cloud Resource Telemetry Monitor (Python, Docker, Prometheus)
-- Designed real-time observability agent capturing CPU, memory, and network throughput.
+1. Smart Attendance & High-Concurrency Assessment Engine (FastAPI, React, OpenCV)
+- Engineered microservices backend handling 800+ requests/min with sub-70ms p95 latency.
+- Implemented Redis distributed caching with LRU eviction, decreasing database query load by 48%.
+2. Cloud Telemetry Observability Suite (Python, Docker, Prometheus)
+- Designed real-time monitoring agent capturing CPU, memory, and packet throughput.
 
-HOBBIES & INTERESTS
-Competitive Programming (LeetCode 300+ problems solved), Playing Chess, Contributing to Open Source repositories, Tech Blogging.
+HOBBIES & EXTRACURRICULAR INTERESTS
+Competitive Programming (Codeforces & LeetCode 350+ solved), Playing Competitive Chess, Open Source contributions, Technical Writing.
 `;
 
-// Initialize UI
+// Initialization
 document.addEventListener("DOMContentLoaded", () => {
   renderTags();
   initSpeechRecognition();
-  inputApiKey.value = userApiKey;
+  initAudioSpectrum();
 
-  // Setup Event Listeners
+  inputApiKey.value = userApiKey;
+  engineProviderSelect.value = activeProvider;
+  modalProviderSelect.value = activeProvider;
+
+  // Listeners
   btnLoadSample.addEventListener("click", () => {
     rawResumeText.value = SAMPLE_PCE_RESUME.trim();
     rawResumeText.classList.remove("hidden");
-    uploadLabel.innerHTML = `<span class="text-emerald-400 font-semibold">Loaded: Poornima CS Sample Student Resume</span>`;
+    uploadLabel.innerHTML = `<span class="text-amber-400 font-semibold font-mono">LOADED: Poornima CS Sample Student Resume</span>`;
     triggerScanFromText(SAMPLE_PCE_RESUME);
   });
 
@@ -102,14 +120,14 @@ document.addEventListener("DOMContentLoaded", () => {
   dropZone.addEventListener("click", () => resumeFileInput.click());
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
-    dropZone.classList.add("border-indigo-500");
+    dropZone.classList.add("border-amber-500");
   });
   dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("border-indigo-500");
+    dropZone.classList.remove("border-amber-500");
   });
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropZone.classList.remove("border-indigo-500");
+    dropZone.classList.remove("border-amber-500");
     if (e.dataTransfer.files.length) {
       resumeFileInput.files = e.dataTransfer.files;
       handleFileUpload(e.dataTransfer.files[0]);
@@ -141,14 +159,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Live STAR Analysis on Input Typing
+  candidateAnswerInput.addEventListener("input", (e) => {
+    updateLiveStarReactor(e.target.value);
+  });
+
   btnFinishEarly.addEventListener("click", endInterviewEarly);
   btnRetake.addEventListener("click", resetToSetup);
 
-  // Settings & Voice
+  // Voice & Provider
   btnVoiceToggle.addEventListener("click", () => {
     isVoiceEnabled = !isVoiceEnabled;
     voiceStatusText.innerText = isVoiceEnabled ? "ON" : "OFF";
-    btnVoiceToggle.classList.toggle("border-cyan-500/50", isVoiceEnabled);
+    voiceStatusText.className = isVoiceEnabled ? "text-amber-400" : "text-slate-500";
+  });
+
+  engineProviderSelect.addEventListener("change", (e) => {
+    activeProvider = e.target.value;
+    modalProviderSelect.value = activeProvider;
+    localStorage.setItem("coach_provider", activeProvider);
+  });
+
+  modalProviderSelect.addEventListener("change", (e) => {
+    activeProvider = e.target.value;
+    engineProviderSelect.value = activeProvider;
+    localStorage.setItem("coach_provider", activeProvider);
   });
 
   btnSettings.addEventListener("click", () => settingsModal.classList.remove("hidden"));
@@ -156,22 +191,26 @@ document.addEventListener("DOMContentLoaded", () => {
   btnSaveSettings.addEventListener("click", () => {
     userApiKey = inputApiKey.value.trim();
     voiceRate = parseFloat(selectVoiceRate.value);
+    activeProvider = modalProviderSelect.value;
+    engineProviderSelect.value = activeProvider;
+
     localStorage.setItem("coach_api_key", userApiKey);
+    localStorage.setItem("coach_provider", activeProvider);
     settingsModal.classList.add("hidden");
   });
 });
 
-// Resume Tag Rendering
+// Render Skills & Hobbies Tags
 function renderTags() {
   skillsContainer.innerHTML = skills.map((s, idx) => `
-    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px]">
-      ${s} <button onclick="removeSkill(${idx})" class="hover:text-rose-400 font-bold ml-0.5">&times;</button>
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-mono">
+      ${s} <button onclick="removeSkill(${idx})" class="hover:text-rose-400 font-bold text-xs">&times;</button>
     </span>
   `).join("");
 
   hobbiesContainer.innerHTML = hobbies.map((h, idx) => `
-    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px]">
-      ${h} <button onclick="removeHobby(${idx})" class="hover:text-rose-400 font-bold ml-0.5">&times;</button>
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-xs font-mono">
+      ${h} <button onclick="removeHobby(${idx})" class="hover:text-rose-400 font-bold text-xs">&times;</button>
     </span>
   `).join("");
 }
@@ -186,11 +225,11 @@ window.removeHobby = (idx) => {
   renderTags();
 };
 
-// Resume Upload & Parse Handlers
+// Ingestion Handlers
 async function handleFileUpload(file) {
-  uploadLabel.innerHTML = `Selected: <strong>${file.name}</strong>`;
-  scanStatusBadge.innerText = "Scanning...";
-  scanStatusBadge.className = "text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 animate-pulse";
+  uploadLabel.innerHTML = `Selected: <strong class="text-amber-400 font-mono">${file.name}</strong>`;
+  scanStatusBadge.innerText = "PARSING FILE...";
+  scanStatusBadge.className = "font-mono text-[10px] px-2 py-0.5 rounded badge-amber animate-pulse";
 
   const formData = new FormData();
   formData.append("file", file);
@@ -208,13 +247,13 @@ async function handleFileUpload(file) {
     }
   } catch (err) {
     console.error(err);
-    alert("Failed to connect to parser service.");
+    alert("Connection error scanning resume.");
   }
 }
 
 async function triggerScanFromText(text) {
-  scanStatusBadge.innerText = "Extracting...";
-  scanStatusBadge.className = "text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 animate-pulse";
+  scanStatusBadge.innerText = "EXTRACTING TOKENS...";
+  scanStatusBadge.className = "font-mono text-[10px] px-2 py-0.5 rounded badge-amber animate-pulse";
 
   try {
     const res = await fetch("/api/resume/scan-text", {
@@ -232,32 +271,59 @@ async function triggerScanFromText(text) {
 }
 
 function populateProfile(profile) {
-  profName.value = profile.candidate_name || "Candidate";
+  profName.value = profile.candidate_name || "Aditya Sharma";
   profCollege.value = profile.college || "Poornima College of Engineering";
-  profStudies.value = profile.studies || "B.Tech Computer Science";
+  profStudies.value = profile.studies || "B.Tech Computer Science & Engineering";
   if (profile.skills && profile.skills.length) skills = profile.skills;
   if (profile.hobbies && profile.hobbies.length) hobbies = profile.hobbies;
   renderTags();
 
-  scanStatusBadge.innerText = "Profile Ready";
-  scanStatusBadge.className = "text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium";
+  scanStatusBadge.innerText = "DOSSIER READY";
+  scanStatusBadge.className = "font-mono text-[10px] px-2 py-0.5 rounded badge-emerald font-bold";
 }
 
-// Start Interview Session
+// Live STAR Reactor Detection
+function updateLiveStarReactor(text) {
+  const t = text.toLowerCase();
+  const hasSituation = /when|during|at my|project|scenario|problem|faced|situation|context/.test(t);
+  const hasTask = /task|needed to|goal|responsible for|objective|requirement|target/.test(t);
+  const hasAction = /i implemented|i built|i decided|i used|i wrote|i analyzed|i resolved|i debugged|i led/.test(t);
+  const hasResult = /result|improved|reduced|increased|achieved|learned|delivered|outcome|successfully|impact/.test(t);
+
+  setStarActive(starNodes.situation, hasSituation, "border-cyan-500/50 text-cyan-300", "bg-cyan-400");
+  setStarActive(starNodes.task, hasTask, "border-amber-500/50 text-amber-300", "bg-amber-400");
+  setStarActive(starNodes.action, hasAction, "border-indigo-500/50 text-indigo-300", "bg-indigo-400");
+  setStarActive(starNodes.result, hasResult, "border-emerald-500/50 text-emerald-300", "bg-emerald-400");
+}
+
+function setStarActive(el, active, activeClasses, dotColor) {
+  if (!el) return;
+  const dot = el.querySelector(".indicator-dot");
+  if (active) {
+    el.className = `p-2.5 rounded-xl bg-slate-900 border ${activeClasses} shadow-sm transition-all flex items-center justify-between font-bold`;
+    if (dot) dot.className = `indicator-dot w-2 h-2 rounded-full ${dotColor} animate-pulse`;
+  } else {
+    el.className = "p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-500 transition-all flex items-center justify-between";
+    if (dot) dot.className = "indicator-dot w-2 h-2 rounded-full bg-slate-800";
+  }
+}
+
+// Start Session
 async function startInterviewSession() {
   const payload = {
-    candidate_name: profName.value.trim() || "Candidate",
+    candidate_name: profName.value.trim() || "Aditya Sharma",
     college: profCollege.value.trim() || "Poornima College of Engineering",
-    studies: profStudies.value.trim() || "B.Tech Computer Science",
+    studies: profStudies.value.trim() || "B.Tech Computer Science & Engineering",
     target_role: targetRole.value,
     target_domain: targetDomain.value,
     skills: skills,
     hobbies: hobbies,
-    api_key: userApiKey || null
+    api_key: userApiKey || null,
+    provider: activeProvider
   };
 
   btnStartInterview.disabled = true;
-  btnStartInterview.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Preparing Environment...`;
+  btnStartInterview.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Initializing Environment...`;
   lucide.createIcons();
 
   try {
@@ -277,18 +343,18 @@ async function startInterviewSession() {
       stepReport.classList.add("hidden");
 
       chatStream.innerHTML = "";
-      updateRoundBadges(currentRound);
+      updateStageBadges(currentRound);
 
-      // Render First Message (Realistic Greeting)
+      // Render First Message (Authentic Greeting)
       appendInterviewerMessage(data.greeting, false, "greeting");
       speakText(data.greeting);
     }
   } catch (err) {
     console.error(err);
-    alert("Could not start interview session.");
+    alert("Could not initialize interview session.");
   } finally {
     btnStartInterview.disabled = false;
-    btnStartInterview.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i> Start Real Interview Simulation`;
+    btnStartInterview.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i> Launch Executive Interview Loop`;
     lucide.createIcons();
   }
 }
@@ -299,9 +365,9 @@ async function submitAnswer() {
   if (!answer) return;
 
   candidateAnswerInput.value = "";
+  updateLiveStarReactor(""); // reset reactor
   appendCandidateMessage(answer);
 
-  // Show typing indicator
   const typingId = appendTypingIndicator();
 
   try {
@@ -311,7 +377,8 @@ async function submitAnswer() {
       body: JSON.stringify({
         session_id: currentSessionId,
         answer: answer,
-        api_key: userApiKey || null
+        api_key: userApiKey || null,
+        provider: activeProvider
       })
     });
     const data = await res.json();
@@ -319,54 +386,54 @@ async function submitAnswer() {
 
     if (data.status === "success") {
       currentRound = data.current_round;
-      updateRoundBadges(currentRound);
+      updateStageBadges(currentRound);
 
-      // Render live feedback badge under candidate message
+      // Attach evidence-based audit feedback drawer to candidate message
       if (data.feedback) {
-        attachFeedbackToLastCandidateMessage(data.feedback);
+        attachAuditDrawerToCandidateMessage(data.feedback, data.exemplar_rewrite);
       }
 
-      // Render interviewer question / follow-up
+      // Render next question / follow-up
       appendInterviewerMessage(data.question, data.is_follow_up, currentRound);
       speakText(data.question);
 
       if (data.is_completed) {
         setTimeout(() => {
           showFinalReport(data.final_report);
-        }, 2200);
+        }, 2400);
       }
     }
   } catch (err) {
     removeTypingIndicator(typingId);
     console.error(err);
-    appendInterviewerMessage("I encountered an issue processing that answer. Let's continue: Could you summarize your core approach?");
+    appendInterviewerMessage("I encountered an issue processing that answer. Could you elaborate on your main technical choice?");
   }
 }
 
-// Render Messages in Chat
+// Render Dialogue
 function appendInterviewerMessage(text, isFollowUp = false, roundName = "") {
   const msgDiv = document.createElement("div");
-  msgDiv.className = "flex items-start gap-3 max-w-3xl fade-in";
-  
-  const followUpBadge = isFollowUp ? `
-    <span class="inline-flex items-center gap-1 px-2 py-0.5 mb-2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold">
-      <i data-lucide="corner-down-right" class="w-3 h-3"></i> Adaptive Follow-Up (Altered based on your previous response)
-    </span>
+  msgDiv.className = "flex items-start gap-3.5 max-w-3xl animate-slide-up";
+
+  const followUpTag = isFollowUp ? `
+    <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 rounded badge-amber font-mono text-[10px] font-bold">
+      <i data-lucide="git-branch" class="w-3 h-3"></i> ADAPTIVE PROBE // ALTERED BASED ON YOUR RESPONSE
+    </div>
   ` : "";
 
   msgDiv.innerHTML = `
-    <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-indigo-600/30 mt-1">
-      <i data-lucide="bot" class="w-5 h-5"></i>
+    <div class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 flex items-center justify-center shrink-0 shadow-lg mt-1 font-mono font-bold text-xs">
+      AI
     </div>
     <div class="flex-1">
-      ${followUpBadge}
-      <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-100 shadow-md leading-relaxed whitespace-pre-line">
+      ${followUpTag}
+      <div class="telemetry-card rounded-2xl rounded-tl-sm p-4 text-xs md:text-sm text-slate-100 shadow-xl leading-relaxed whitespace-pre-line border border-slate-800/80">
         ${text}
       </div>
-      <div class="text-[10px] text-slate-500 mt-1 pl-1 flex items-center gap-2">
-        <span>AI Interviewer</span>
+      <div class="flex items-center gap-2 mt-1.5 pl-1 text-[10px] font-mono text-slate-500">
+        <span>VERITAS EVALUATOR</span>
         <span>•</span>
-        <button onclick="speakText('${text.replace(/'/g, "\\'").replace(/\n/g, " ")}')" class="hover:text-indigo-400 flex items-center gap-1">
+        <button onclick="speakText('${text.replace(/'/g, "\\'").replace(/\n/g, " ")}')" class="hover:text-amber-400 flex items-center gap-1 transition">
           <i data-lucide="volume-2" class="w-3 h-3"></i> Play Voice
         </button>
       </div>
@@ -379,17 +446,17 @@ function appendInterviewerMessage(text, isFollowUp = false, roundName = "") {
 
 function appendCandidateMessage(text) {
   const msgDiv = document.createElement("div");
-  msgDiv.className = "flex items-start justify-end gap-3 max-w-3xl self-end ml-auto fade-in candidate-msg-container";
+  msgDiv.className = "flex items-start justify-end gap-3.5 max-w-3xl self-end ml-auto animate-slide-up w-full";
   msgDiv.innerHTML = `
     <div class="flex-1 flex flex-col items-end">
-      <div class="bg-indigo-600 border border-indigo-500 rounded-2xl rounded-tr-sm p-4 text-sm text-white shadow-md leading-relaxed whitespace-pre-line">
+      <div class="bg-gradient-to-r from-amber-600 to-amber-700 text-slate-950 font-medium rounded-2xl rounded-tr-sm p-4 text-xs md:text-sm shadow-xl leading-relaxed whitespace-pre-line border border-amber-400/30">
         ${text}
       </div>
-      <div class="text-[10px] text-slate-400 mt-1 pr-1">Candidate Answer</div>
+      <div class="text-[10px] font-mono text-slate-500 mt-1 pr-1">CANDIDATE TELEMETRY STREAM</div>
       <div class="feedback-anchor w-full"></div>
     </div>
-    <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0 mt-1">
-      <i data-lucide="user" class="w-5 h-5"></i>
+    <div class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 shrink-0 mt-1 font-mono font-bold text-xs">
+      YOU
     </div>
   `;
   chatStream.appendChild(msgDiv);
@@ -397,34 +464,50 @@ function appendCandidateMessage(text) {
   lucide.createIcons();
 }
 
-function attachFeedbackToLastCandidateMessage(feedback) {
+function attachAuditDrawerToCandidateMessage(feedback, exemplarRewrite) {
   const anchors = document.querySelectorAll(".feedback-anchor");
   if (!anchors.length) return;
   const lastAnchor = anchors[anchors.length - 1];
 
   const scoreColor = feedback.score >= 80 ? "text-emerald-400" : (feedback.score >= 65 ? "text-amber-400" : "text-rose-400");
-  const suggestionText = feedback.suggestions && feedback.suggestions.length ? feedback.suggestions[0] : "Good structured delivery.";
+  const suggestion = feedback.suggestions && feedback.suggestions.length ? feedback.suggestions[0] : "Good structural delivery.";
+  const drawerId = "drawer-" + Date.now();
 
   lastAnchor.innerHTML = `
-    <div class="mt-2 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs w-full">
-      <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-1.5">
-        <span class="font-semibold text-slate-300 flex items-center gap-1">
-          <i data-lucide="award" class="w-3.5 h-3.5 text-indigo-400"></i> Turn Evaluation
+    <div class="mt-2.5 p-3 rounded-xl bg-slate-950/90 border border-slate-800 text-xs w-full shadow-lg">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2 font-mono">
+        <span class="text-slate-400 font-semibold flex items-center gap-1.5">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i> Evidence-Based Evaluation
         </span>
         <span class="font-bold ${scoreColor}">${feedback.score} / 100</span>
       </div>
-      <div class="grid grid-cols-4 gap-1 text-[10px] text-center mb-1.5 text-slate-400">
-        <div>Struct: <strong class="text-slate-200">${feedback.metrics.structure}</strong></div>
-        <div>Relev: <strong class="text-slate-200">${feedback.metrics.relevance}</strong></div>
-        <div>Depth: <strong class="text-slate-200">${feedback.metrics.depth}</strong></div>
-        <div>Clarity: <strong class="text-slate-200">${feedback.metrics.clarity}</strong></div>
+
+      <!-- Metrics -->
+      <div class="grid grid-cols-4 gap-1 text-[10px] font-mono text-center mb-2 text-slate-400">
+        <div class="p-1 rounded bg-slate-900 border border-slate-800/60">Struct: <strong class="text-slate-200">${feedback.metrics.structure}</strong></div>
+        <div class="p-1 rounded bg-slate-900 border border-slate-800/60">Relev: <strong class="text-slate-200">${feedback.metrics.relevance}</strong></div>
+        <div class="p-1 rounded bg-slate-900 border border-slate-800/60">Depth: <strong class="text-slate-200">${feedback.metrics.depth}</strong></div>
+        <div class="p-1 rounded bg-slate-900 border border-slate-800/60">Clarity: <strong class="text-slate-200">${feedback.metrics.clarity}</strong></div>
       </div>
+
       <div class="text-[11px] text-slate-300">
-        <span class="text-indigo-400 font-medium">Evidence Cited:</span> "${feedback.evidence_cited}"
+        <span class="text-amber-400 font-mono font-bold">Quoted Evidence:</span> "${feedback.evidence_cited}"
       </div>
       <div class="text-[11px] text-amber-300/90 mt-1">
-        <span class="text-amber-400 font-medium">Suggestion:</span> ${suggestionText}
+        <span class="text-amber-400 font-mono font-bold">Feedback Directive:</span> ${suggestion}
       </div>
+
+      <!-- Staff Rewrite Toggle -->
+      ${exemplarRewrite ? `
+        <div class="mt-2 pt-2 border-t border-slate-800/80">
+          <button onclick="document.getElementById('${drawerId}').classList.toggle('hidden')" class="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition">
+            <i data-lucide="sparkles" class="w-3 h-3"></i> View Staff-Level Engineer Rewrite Benchmark
+          </button>
+          <div id="${drawerId}" class="hidden mt-2 p-2.5 rounded-lg bg-cyan-950/20 border border-cyan-500/30 text-[11px] text-cyan-200 leading-relaxed font-sans">
+            ${exemplarRewrite}
+          </div>
+        </div>
+      ` : ""}
     </div>
   `;
   chatStream.scrollTop = chatStream.scrollHeight;
@@ -435,12 +518,12 @@ function appendTypingIndicator() {
   const id = "typing-" + Date.now();
   const div = document.createElement("div");
   div.id = id;
-  div.className = "flex items-center gap-3 text-slate-500 text-xs py-2 fade-in";
+  div.className = "flex items-center gap-3 text-slate-500 text-xs py-2 font-mono animate-slide-up";
   div.innerHTML = `
-    <div class="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400">
-      <i data-lucide="bot" class="w-4 h-4 animate-spin"></i>
+    <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400">
+      <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
     </div>
-    <span>Interviewer is evaluating your response & formulating next question...</span>
+    <span>Interviewer analyzing response semantics & formulating probe...</span>
   `;
   chatStream.appendChild(div);
   chatStream.scrollTop = chatStream.scrollHeight;
@@ -453,8 +536,8 @@ function removeTypingIndicator(id) {
   if (el) el.remove();
 }
 
-// Update Round Badges
-function updateRoundBadges(round) {
+// Stage Badges
+function updateStageBadges(round) {
   const badges = {
     greeting: document.getElementById("stepBadgeGreeting"),
     hr: document.getElementById("stepBadgeHr"),
@@ -463,9 +546,9 @@ function updateRoundBadges(round) {
     behavioural: document.getElementById("stepBadgeBehavioural")
   };
 
-  const activeClass = "bg-indigo-600 text-white font-bold ring-2 ring-indigo-400/30";
-  const completedClass = "bg-emerald-600/30 text-emerald-300 border border-emerald-500/30";
-  const inactiveClass = "bg-slate-800 text-slate-400";
+  const activeClass = "bg-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/20";
+  const completedClass = "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
+  const inactiveClass = "bg-slate-900 text-slate-500 border border-slate-800";
 
   let foundActive = false;
   const order = ["greeting", "hr", "technical", "situational", "behavioural"];
@@ -473,7 +556,7 @@ function updateRoundBadges(round) {
   order.forEach(r => {
     const el = badges[r];
     if (!el) return;
-    el.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs ";
+    el.className = "flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono ";
     if (r === round) {
       el.className += activeClass;
       foundActive = true;
@@ -485,37 +568,45 @@ function updateRoundBadges(round) {
   });
 }
 
-// Speech Recognition (Web Speech API)
+// Web Speech Recognition
 function initSpeechRecognition() {
   window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if ("SpeechRecognition" in window) {
     recognition = new window.SpeechRecognition();
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.lang = "en-US";
 
     recognition.onstart = () => {
       isRecording = true;
-      btnMic.classList.add("mic-active");
-      speechStatus.innerText = "Listening... Speak now";
+      btnMic.classList.add("mic-recording");
+      speechStatus.innerHTML = `<span class="flex items-center gap-1.5 text-rose-400 font-semibold"><i data-lucide="activity" class="w-3.5 h-3.5 animate-pulse"></i> Capturing speech telemetry...</span>`;
+      lucide.createIcons();
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      candidateAnswerInput.value += (candidateAnswerInput.value ? " " : "") + transcript;
-      speechStatus.innerText = "Captured audio";
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          candidateAnswerInput.value += (candidateAnswerInput.value ? " " : "") + event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      updateLiveStarReactor(candidateAnswerInput.value + " " + interim);
     };
 
     recognition.onerror = () => {
       isRecording = false;
-      btnMic.classList.remove("mic-active");
-      speechStatus.innerText = "Mic error or timeout";
+      btnMic.classList.remove("mic-recording");
+      speechStatus.innerHTML = `<span class="text-amber-400 font-mono">Microphone paused</span>`;
     };
 
     recognition.onend = () => {
       isRecording = false;
-      btnMic.classList.remove("mic-active");
-      speechStatus.innerText = "Mic ready";
+      btnMic.classList.remove("mic-recording");
+      speechStatus.innerHTML = `<span class="text-cyan-400 font-mono"><i data-lucide="radio" class="w-3.5 h-3.5 inline"></i> Mic ready</span>`;
+      lucide.createIcons();
     };
 
     btnMic.addEventListener("click", () => {
@@ -527,22 +618,77 @@ function initSpeechRecognition() {
     });
   } else {
     btnMic.disabled = true;
-    speechStatus.innerText = "Speech API unsupported in this browser";
+    speechStatus.innerText = "Browser Speech API unsupported";
   }
 }
 
-// Speech Synthesis (Text-to-Speech)
+// Text-to-Speech
 function speakText(text) {
   if (!isVoiceEnabled || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
+  isSynthesizing = true;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = voiceRate || 1.0;
+  utterance.onend = () => { isSynthesizing = false; };
+  utterance.onerror = () => { isSynthesizing = false; };
   window.speechSynthesis.speak(utterance);
 }
 
-// Finish Early Handler
+// Audio Spectrum Equalizer Animation
+function initAudioSpectrum() {
+  const canvas = document.getElementById("audioSpectrum");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+
+  function resize() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  const numBars = 28;
+  const bars = new Array(numBars).fill(4);
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const barWidth = (canvas.width / numBars) - 3;
+
+    const isActive = isRecording || isSynthesizing;
+
+    for (let i = 0; i < numBars; i++) {
+      if (isActive) {
+        bars[i] = Math.random() * (canvas.height * 0.75) + 6;
+      } else {
+        bars[i] += (4 - bars[i]) * 0.15;
+      }
+
+      const x = i * (barWidth + 3);
+      const y = canvas.height - bars[i];
+
+      const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+      if (isRecording) {
+        gradient.addColorStop(0, "rgba(239, 68, 68, 0.4)");
+        gradient.addColorStop(1, "rgba(239, 68, 68, 1)");
+      } else if (isSynthesizing) {
+        gradient.addColorStop(0, "rgba(255, 158, 59, 0.3)");
+        gradient.addColorStop(1, "rgba(255, 158, 59, 1)");
+      } else {
+        gradient.addColorStop(0, "rgba(51, 65, 85, 0.3)");
+        gradient.addColorStop(1, "rgba(51, 65, 85, 0.6)");
+      }
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, barWidth, bars[i]);
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// Finish Early
 async function endInterviewEarly() {
-  if (!confirm("Are you sure you want to end the session early and view the evaluation report?")) return;
+  if (!confirm("Conclude interview session now and generate the full Executive Dossier?")) return;
   try {
     const res = await fetch(`/api/interview/${currentSessionId}/report`);
     const data = await res.json();
@@ -554,61 +700,59 @@ async function endInterviewEarly() {
   }
 }
 
-// Show Final Report & Visualizations
+// Show Final Report
 async function showFinalReport(report) {
   stepSetup.classList.add("hidden");
   stepArena.classList.add("hidden");
   stepReport.classList.remove("hidden");
 
-  document.getElementById("repCandidateTitle").innerText = `${report.candidate_name}'s Readiness Report`;
+  document.getElementById("repCandidateTitle").innerText = `${report.candidate_name}'s Executive Readiness Dossier`;
   document.getElementById("repVerdict").innerText = report.readiness_verdict;
   document.getElementById("repOverallScore").innerText = report.overall_score;
 
-  // Set Metric values
   document.getElementById("metricStructure").innerText = report.category_scores.structure + "%";
   document.getElementById("metricRelevance").innerText = report.category_scores.relevance + "%";
   document.getElementById("metricDepth").innerText = report.category_scores.depth + "%";
   document.getElementById("metricClarity").innerText = report.category_scores.clarity + "%";
 
-  // Render Strengths
+  // Strengths
   const strengthsUl = document.getElementById("repStrengthsList");
   strengthsUl.innerHTML = (report.strengths || []).map(s => `
     <li class="flex items-start gap-2">
-      <i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+      <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
       <span>${s}</span>
     </li>
   `).join("");
 
-  // Render Suggestions
+  // Suggestions
   const suggestionsUl = document.getElementById("repSuggestionsList");
   suggestionsUl.innerHTML = (report.areas_for_improvement || []).map(s => `
     <li class="flex items-start gap-2">
-      <i data-lucide="arrow-right" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
+      <i data-lucide="arrow-right-circle" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
       <span>${s}</span>
     </li>
   `).join("");
 
-  // Render Evidence Citations
+  // Evidence Trail
   const evidenceList = document.getElementById("evidenceTrailList");
   evidenceList.innerHTML = (report.evidence_trail || []).map(e => `
-    <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-      <div class="flex items-center justify-between text-slate-400 mb-1">
-        <span class="font-semibold text-indigo-400 uppercase tracking-wider text-[10px]">Round: ${e.round}</span>
-        <span class="font-bold text-slate-200">Score: ${e.score}/100</span>
+    <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono">
+      <div class="flex items-center justify-between text-slate-400 mb-1.5">
+        <span class="font-bold text-amber-400 uppercase tracking-wider text-[10px]">STAGE: ${e.round}</span>
+        <span class="font-bold text-slate-200">SCORE: ${e.score}/100</span>
       </div>
-      <div class="text-slate-300 italic mb-1.5 pl-2 border-l-2 border-indigo-500/50">
+      <div class="text-slate-300 italic mb-2 pl-3 border-l-2 border-amber-500/60 font-sans">
         "${e.cited_snippet}"
       </div>
-      <div class="text-slate-400 text-[11px]">
-        <strong class="text-emerald-400">Actionable Feedback:</strong> ${e.suggestion}
+      <div class="text-slate-400 text-[11px] font-sans">
+        <strong class="text-emerald-400 font-mono">DIRECTIVE:</strong> ${e.suggestion}
       </div>
     </div>
   `).join("");
 
-  // Render Radar Chart
   renderRadarChart(report.category_scores);
 
-  // Fetch History for Progress Chart
+  // Fetch History for Longitudinal Chart
   try {
     const histRes = await fetch(`/api/candidate/${encodeURIComponent(report.candidate_name)}/history`);
     const histData = await histRes.json();
@@ -633,9 +777,9 @@ function renderRadarChart(categories) {
       datasets: [{
         label: "Candidate Score",
         data: [categories.structure, categories.relevance, categories.depth, categories.clarity],
-        backgroundColor: "rgba(99, 102, 241, 0.25)",
-        borderColor: "rgba(99, 102, 241, 1)",
-        pointBackgroundColor: "rgba(129, 140, 248, 1)",
+        backgroundColor: "rgba(255, 158, 59, 0.2)",
+        borderColor: "rgba(255, 158, 59, 1)",
+        pointBackgroundColor: "rgba(255, 158, 59, 1)",
         pointBorderColor: "#fff",
         borderWidth: 2
       }]
@@ -645,15 +789,13 @@ function renderRadarChart(categories) {
         r: {
           min: 0,
           max: 100,
-          ticks: { stepSize: 20, color: "#94a3b8", backdropColor: "transparent" },
-          grid: { color: "rgba(51, 65, 85, 0.5)" },
-          angleLines: { color: "rgba(51, 65, 85, 0.5)" },
-          pointLabels: { color: "#e2e8f0", font: { size: 11, weight: "bold" } }
+          ticks: { stepSize: 20, color: "#64748b", backdropColor: "transparent" },
+          grid: { color: "rgba(255, 255, 255, 0.08)" },
+          angleLines: { color: "rgba(255, 255, 255, 0.08)" },
+          pointLabels: { color: "#cbd5e1", font: { size: 11, family: "Plus Jakarta Sans", weight: "bold" } }
         }
       },
-      plugins: {
-        legend: { display: false }
-      },
+      plugins: { legend: { display: false } },
       responsive: true,
       maintainAspectRatio: false
     }
@@ -664,7 +806,7 @@ function renderProgressChart(history) {
   const ctx = document.getElementById("progressLineChart").getContext("2d");
   if (progressChartInstance) progressChartInstance.destroy();
 
-  const labels = history.map((h, i) => `Session #${i + 1}`);
+  const labels = history.map((h, i) => `Loop #${i + 1}`);
   const scores = history.map(h => h.overall_score || 0);
 
   progressChartInstance = new Chart(ctx, {
@@ -672,15 +814,15 @@ function renderProgressChart(history) {
     data: {
       labels: labels,
       datasets: [{
-        label: "Overall Readiness Score",
+        label: "Composite Readiness Score",
         data: scores,
-        borderColor: "rgba(16, 185, 129, 1)",
-        backgroundColor: "rgba(16, 185, 129, 0.15)",
+        borderColor: "rgba(0, 229, 153, 1)",
+        backgroundColor: "rgba(0, 229, 153, 0.12)",
         fill: true,
         tension: 0.35,
         borderWidth: 2.5,
         pointRadius: 4,
-        pointBackgroundColor: "rgba(16, 185, 129, 1)"
+        pointBackgroundColor: "rgba(0, 229, 153, 1)"
       }]
     },
     options: {
@@ -688,17 +830,15 @@ function renderProgressChart(history) {
         y: {
           min: 40,
           max: 100,
-          grid: { color: "rgba(51, 65, 85, 0.3)" },
-          ticks: { color: "#94a3b8" }
+          grid: { color: "rgba(255, 255, 255, 0.06)" },
+          ticks: { color: "#64748b" }
         },
         x: {
           grid: { display: false },
-          ticks: { color: "#94a3b8" }
+          ticks: { color: "#64748b" }
         }
       },
-      plugins: {
-        legend: { display: false }
-      },
+      plugins: { legend: { display: false } },
       responsive: true,
       maintainAspectRatio: false
     }

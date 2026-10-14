@@ -21,7 +21,7 @@ init_db()
 app = FastAPI(
     title="Responsible AI Interview & Career Readiness Coach",
     description="Adaptive, evidence-based mock interview platform with responsible AI bias mitigation",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -45,11 +45,13 @@ class StartInterviewRequest(BaseModel):
     skills: List[str]
     hobbies: List[str]
     api_key: Optional[str] = None
+    provider: Optional[str] = "gemini"
 
 class CandidateResponseRequest(BaseModel):
     session_id: str
     answer: str
     api_key: Optional[str] = None
+    provider: Optional[str] = "gemini"
 
 # API Endpoints
 @app.post("/api/resume/scan")
@@ -123,7 +125,8 @@ async def respond_to_interviewer(req: CandidateResponseRequest):
         current_round=current_round,
         last_candidate_answer=req.answer,
         round_turn_count=round_turn_count,
-        api_key=req.api_key
+        api_key=req.api_key,
+        provider=req.provider or "gemini"
     )
     
     # Save candidate's message with evaluation
@@ -162,6 +165,7 @@ async def respond_to_interviewer(req: CandidateResponseRequest):
         "is_follow_up": next_step["is_follow_up"],
         "current_round": new_round,
         "feedback": next_step["feedback"],
+        "exemplar_rewrite": next_step.get("exemplar_rewrite"),
         "is_completed": is_completed,
         "final_report": report
     })
@@ -184,7 +188,7 @@ async def get_history(candidate_name: str):
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "app": "Responsible AI Interview Coach", "version": "1.0.0"}
+    return {"status": "ok", "app": "Responsible AI Interview Coach", "version": "2.0.0"}
 
 # Static Files & Dashboard UI
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")

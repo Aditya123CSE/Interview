@@ -1,182 +1,211 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Responsible AI Interview & Career Readiness Coach</title>
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Chart.js for Radar & Progress Charts -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-mesh-dark min-h-screen flex flex-col font-sans text-slate-100 antialiased selection:bg-amber-500 selection:text-black">
 
-  <!-- Header -->
-  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur sticky top-0 z-50">
+  <!-- Executive Header -->
+  <header class="glass-panel sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      
+      <!-- Brand & Status -->
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 flex items-center justify-center shadow-lg shadow-amber-500/20 border border-amber-400/30">
+          <i data-lucide="shield-alert" class="w-5 h-5 text-slate-950 font-bold"></i>
         </div>
         <div>
-          <h1 class="font-bold text-lg text-white leading-tight flex items-center gap-2">
-            Responsible AI Interview Coach
-            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-              <i data-lucide="check-circle" class="w-3 h-3"></i> Bias-Free Rubric
+          <div class="flex items-center gap-2">
+            <h1 class="font-display font-extrabold text-base md:text-lg tracking-tight text-white">
+              VERITAS <span class="text-amber-400">COACH</span>
+            </h1>
+            <span class="font-mono text-[10px] px-2 py-0.5 rounded badge-emerald flex items-center gap-1 font-semibold uppercase tracking-wider">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Bias-Shield Active
             </span>
-          </h1>
-          <p class="text-xs text-slate-400">CS Tech Day • Poornima College of Engineering</p>
+          </div>
+          <p class="font-mono text-[11px] text-slate-400">CS Tech Day • Poornima College of Engineering</p>
         </div>
       </div>
 
-      <div class="flex items-center space-x-3">
-        <button id="btnVoiceToggle" class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-xs font-medium text-slate-300 flex items-center gap-1.5 transition">
-          <i data-lucide="volume-2" class="w-4 h-4 text-cyan-400"></i>
-          <span>Voice: <strong id="voiceStatusText">ON</strong></span>
+      <!-- Controls & Provider -->
+      <div class="flex items-center space-x-2 md:space-x-3">
+        <!-- Provider Selector -->
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono">
+          <span class="text-slate-500 text-[10px]">ENGINE:</span>
+          <select id="engineProviderSelect" class="bg-transparent text-amber-400 font-semibold focus:outline-none cursor-pointer text-xs">
+            <option value="gemini" class="bg-slate-900 text-slate-200">Gemini 1.5/2.0 Flash</option>
+            <option value="groq" class="bg-slate-900 text-slate-200">Groq (Llama-3.3-70B)</option>
+            <option value="openai" class="bg-slate-900 text-slate-200">OpenAI (GPT-4o)</option>
+            <option value="local" class="bg-slate-900 text-slate-200">Built-in Cognitive (Offline)</option>
+          </select>
+        </div>
+
+        <!-- Voice Toggle -->
+        <button id="btnVoiceToggle" class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-mono text-slate-300 flex items-center gap-1.5 transition">
+          <i data-lucide="volume-2" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span class="hidden md:inline">VOICE:</span> <strong id="voiceStatusText" class="text-amber-400">ON</strong>
         </button>
-        <button id="btnSettings" class="p-2 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white transition" title="API Settings">
-          <i data-lucide="settings" class="w-5 h-5"></i>
+
+        <!-- Settings -->
+        <button id="btnSettings" class="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition" title="API Keys & Engine Settings">
+          <i data-lucide="sliders" class="w-4 h-4"></i>
         </button>
       </div>
+
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col">
+  <!-- Main Viewports Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
 
-    <!-- STEP 1: RESUME SCANNER & SETUP -->
-    <section id="stepSetup" class="max-w-4xl w-full mx-auto space-y-6">
+    <!-- VIEW 1: RESUME INGESTION & PROFILE REVIEW -->
+    <section id="stepSetup" class="max-w-5xl w-full mx-auto space-y-6">
       
-      <!-- Welcome Hero Banner -->
-      <div class="p-6 md:p-8 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-500/20 shadow-2xl relative overflow-hidden">
-        <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="relative z-10 max-w-2xl">
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-3">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Challenge #7: Career Readiness Coach
-          </span>
-          <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Personalized, Evidence-Based Mock Interviews</h2>
+      <!-- Briefing Banner -->
+      <div class="telemetry-card rounded-2xl p-6 md:p-8 relative overflow-hidden">
+        <div class="absolute right-0 top-0 w-96 h-96 bg-gradient-to-bl from-amber-500/10 via-emerald-500/5 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-3xl">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="font-mono text-[10px] px-2.5 py-1 rounded badge-amber font-semibold uppercase tracking-wider">
+              POORNIMA CS TECH DAY // CHALLENGE #7
+            </span>
+            <span class="font-mono text-[10px] text-slate-500">REAL-TIME ADAPTIVE PIPELINE</span>
+          </div>
+          <h2 class="font-display text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+            Responsible AI Interview & Career Readiness Coach
+          </h2>
           <p class="text-sm md:text-base text-slate-300 mt-2 leading-relaxed">
-            Upload your resume or load our Poornima CS sample. The AI extracts your <strong>skills, hobbies, college, and studies</strong>, opens with a real-world greeting, guides you through 4 dynamic rounds, and provides strict bias-mitigated feedback.
+            Eliminates superficial, canned interview simulators. Parses candidate <strong>skills, hobbies, college, and studies</strong>, opens with an authentic executive greeting, conducts 4 progressive rounds, adapts questions dynamically to your answers, and scores transparently with verifiable evidence citations.
           </p>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button id="btnLoadSample" class="px-3.5 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-xs font-medium flex items-center gap-1.5 transition">
-              <i data-lucide="file-text" class="w-4 h-4"></i> Load Sample PCE Student Resume
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <button id="btnLoadSample" class="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-medium flex items-center gap-2 transition">
+              <i data-lucide="file-check-2" class="w-4 h-4 text-amber-400"></i> Load Poornima College CS Sample Resume
             </button>
+            <span class="text-xs text-slate-500 font-mono">← Instant 1-click test for judges</span>
           </div>
         </div>
       </div>
 
-      <!-- Upload & Input Tabs -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Ingestion & Extracted Profile Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
         
-        <!-- Left: Upload Box -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+        <!-- Left 5 Cols: Ingest Zone -->
+        <div class="md:col-span-5 telemetry-card rounded-2xl p-6 flex flex-col justify-between space-y-4">
           <div>
-            <h3 class="text-base font-semibold text-white flex items-center gap-2 mb-2">
-              <i data-lucide="upload-cloud" class="w-5 h-5 text-indigo-400"></i> Scan Resume
-            </h3>
-            <p class="text-xs text-slate-400 mb-4">Upload PDF, DOCX, or paste resume markdown.</p>
-            
-            <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-xl p-6 text-center cursor-pointer transition bg-slate-950/40">
-              <input type="file" id="resumeFileInput" class="hidden" accept=".pdf,.docx,.txt">
-              <div class="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-indigo-400 mb-3">
-                <i data-lucide="file-up" class="w-6 h-6"></i>
-              </div>
-              <p class="text-sm font-medium text-slate-200" id="uploadLabel">Drag & drop resume here, or <span class="text-indigo-400 underline">browse</span></p>
-              <p class="text-xs text-slate-500 mt-1">Supports PDF, Word (.docx), or Text</p>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-display text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="file-up" class="w-4 h-4 text-amber-400"></i> Resume Scanner
+              </h3>
+              <span id="scanStatusBadge" class="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-500 border border-slate-800">
+                AWAITING INPUT
+              </span>
             </div>
 
-            <div class="mt-4">
-              <button id="togglePasteText" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                <i data-lucide="code" class="w-3.5 h-3.5"></i> Or paste text directly
+            <!-- Drag & Drop -->
+            <div id="dropZone" class="border-2 border-dashed border-slate-800 hover:border-amber-500/50 rounded-xl p-6 text-center cursor-pointer transition bg-slate-950/60 group">
+              <input type="file" id="resumeFileInput" class="hidden" accept=".pdf,.docx,.txt">
+              <div class="w-12 h-12 mx-auto rounded-xl bg-slate-900 group-hover:bg-amber-500/10 text-slate-400 group-hover:text-amber-400 flex items-center justify-center transition mb-3 border border-slate-800">
+                <i data-lucide="upload" class="w-5 h-5"></i>
+              </div>
+              <p class="text-xs font-medium text-slate-200" id="uploadLabel">
+                Drop PDF / DOCX resume here, or <span class="text-amber-400 underline">browse</span>
+              </p>
+              <p class="font-mono text-[10px] text-slate-500 mt-1">Native PDF, Word, or Markdown parsing</p>
+            </div>
+
+            <!-- Paste Toggle -->
+            <div class="mt-3">
+              <button id="togglePasteText" class="font-mono text-[11px] text-slate-400 hover:text-amber-300 flex items-center gap-1.5 transition">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Or paste raw resume markdown / text
               </button>
-              <textarea id="rawResumeText" class="hidden w-full mt-2 p-3 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-300 h-28 focus:outline-none focus:border-indigo-500" placeholder="Paste resume content here..."></textarea>
+              <textarea id="rawResumeText" class="hidden w-full mt-2 p-3 font-mono text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-300 h-28 focus:outline-none focus:border-amber-500/60 resize-none" placeholder="Paste full resume text here..."></textarea>
             </div>
           </div>
 
-          <button id="btnScanResume" class="w-full mt-4 py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-medium text-sm shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition">
-            <i data-lucide="scan" class="w-4 h-4"></i> Scan & Extract Profile
+          <button id="btnScanResume" class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider font-mono shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition">
+            <i data-lucide="scan" class="w-4 h-4 font-bold"></i> Extract Skills & Extracurriculars
           </button>
         </div>
 
-        <!-- Right: Extracted Intelligence Card -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+        <!-- Right 7 Cols: Extracted Candidate Profile -->
+        <div class="md:col-span-7 telemetry-card rounded-2xl p-6 flex flex-col justify-between space-y-4">
           <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                <i data-lucide="user-check" class="w-5 h-5 text-emerald-400"></i> Extracted Profile
-              </h3>
-              <span id="scanStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Awaiting Resume</span>
-            </div>
+            <h3 class="font-display text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-4">
+              <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i> Extracted Candidate Dossier
+            </h3>
 
-            <div class="space-y-3 text-xs">
-              <div>
-                <label class="text-slate-400 block font-medium">Candidate Name</label>
-                <input type="text" id="profName" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500" value="Aditya Sharma">
-              </div>
-
-              <div class="grid grid-cols-2 gap-2">
+            <div class="space-y-3.5 text-xs">
+              
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="text-slate-400 block font-medium">College / University</label>
-                  <input type="text" id="profCollege" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500" value="Poornima College of Engineering">
+                  <label class="font-mono text-[11px] text-slate-400 block mb-1">CANDIDATE NAME</label>
+                  <input type="text" id="profName" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-500/50 font-medium" value="Aditya Sharma">
                 </div>
                 <div>
-                  <label class="text-slate-400 block font-medium">Studies / Degree</label>
-                  <input type="text" id="profStudies" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500" value="B.Tech Computer Science">
-                </div>
-              </div>
-
-              <div>
-                <label class="text-slate-400 block font-medium mb-1">Technical Skills Extracted</label>
-                <div id="skillsContainer" class="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-950/60 rounded-lg border border-slate-800">
-                  <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px]">Python</span>
-                  <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px]">FastAPI</span>
-                  <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px]">React</span>
-                  <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px]">SQL</span>
-                </div>
-              </div>
-
-              <div>
-                <label class="text-slate-400 block font-medium mb-1">Hobbies & Passions</label>
-                <div id="hobbiesContainer" class="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-950/60 rounded-lg border border-slate-800">
-                  <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px]">Competitive Programming</span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px]">Chess</span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px]">Open Source</span>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 pt-1">
-                <div>
-                  <label class="text-slate-400 block font-medium">Target Role</label>
-                  <select id="targetRole" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500">
+                  <label class="font-mono text-[11px] text-slate-400 block mb-1">TARGET ROLE</label>
+                  <select id="targetRole" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-500/50">
                     <option value="Software Development Engineer (SDE 1)">Software Engineer (SDE 1)</option>
+                    <option value="Backend Systems Engineer">Backend Systems Engineer</option>
                     <option value="Full Stack Developer">Full Stack Developer</option>
-                    <option value="Backend Engineer">Backend Engineer</option>
-                    <option value="Frontend Engineer">Frontend Engineer</option>
                     <option value="AI / ML Engineer">AI / ML Engineer</option>
                     <option value="DevOps & Cloud Engineer">DevOps & Cloud Engineer</option>
                   </select>
                 </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="text-slate-400 block font-medium">Target Domain</label>
-                  <select id="targetDomain" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500">
-                    <option value="Fintech & High-Scale Systems">Fintech & High-Scale</option>
-                    <option value="Cloud SaaS & Platform">Cloud SaaS</option>
-                    <option value="AI Platforms & Intelligent Apps">AI Platforms</option>
-                    <option value="E-Commerce & Logistics">E-Commerce</option>
-                    <option value="Healthtech Systems">Healthtech</option>
-                  </select>
+                  <label class="font-mono text-[11px] text-slate-400 block mb-1">COLLEGE / UNIVERSITY</label>
+                  <input type="text" id="profCollege" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-500/50" value="Poornima College of Engineering">
                 </div>
+                <div>
+                  <label class="font-mono text-[11px] text-slate-400 block mb-1">STUDIES / DEGREE</label>
+                  <input type="text" id="profStudies" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-500/50" value="B.Tech Computer Science & Engineering">
+                </div>
+              </div>
+
+              <!-- Skills Extracted -->
+              <div>
+                <label class="font-mono text-[11px] text-slate-400 block mb-1">TECHNICAL SKILLS IDENTIFIED</label>
+                <div id="skillsContainer" class="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-950/80 rounded-lg border border-slate-800">
+                  <!-- Pills -->
+                </div>
+              </div>
+
+              <!-- Hobbies & Passions Extracted -->
+              <div>
+                <label class="font-mono text-[11px] text-slate-400 block mb-1">HOBBIES & EXTRACURRICULAR INTERESTS</label>
+                <div id="hobbiesContainer" class="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-950/80 rounded-lg border border-slate-800">
+                  <!-- Pills -->
+                </div>
+              </div>
+
+              <!-- Target Domain -->
+              <div>
+                <label class="font-mono text-[11px] text-slate-400 block mb-1">TARGET BUSINESS DOMAIN</label>
+                <select id="targetDomain" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-500/50">
+                  <option value="Fintech & High-Scale Systems">Fintech & High-Scale Systems</option>
+                  <option value="Cloud SaaS & Platform">Cloud SaaS & Platform</option>
+                  <option value="AI Platforms & Intelligent Apps">AI Platforms & Intelligent Apps</option>
+                  <option value="E-Commerce & Logistics">E-Commerce & Logistics</option>
+                  <option value="Healthtech Systems">Healthtech Systems</option>
+                </select>
               </div>
 
             </div>
           </div>
 
-          <button id="btnStartInterview" class="w-full mt-5 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold text-sm shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition">
-            <i data-lucide="play" class="w-4 h-4 fill-current"></i> Start Real Interview Simulation
+          <button id="btnStartInterview" class="w-full mt-4 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-bold text-xs uppercase tracking-wider font-mono shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition">
+            <i data-lucide="play" class="w-4 h-4 fill-current"></i> Launch Executive Interview Loop
           </button>
         </div>
 
@@ -184,194 +213,263 @@
 
     </section>
 
-    <!-- STEP 2: LIVE INTERVIEW ARENA -->
-    <section id="stepArena" class="hidden flex-1 flex flex-col h-[calc(100vh-8rem)]">
+    <!-- VIEW 2: SPLIT-SCREEN REAL-TIME INTERVIEW ARENA -->
+    <section id="stepArena" class="hidden flex-1 flex flex-col h-[calc(100vh-6.5rem)]">
       
-      <!-- Top Round Progress Indicator -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-4 flex items-center justify-between overflow-x-auto gap-2">
-        <div class="flex items-center gap-2 md:gap-4 text-xs font-medium min-w-max">
-          <div id="stepBadgeGreeting" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-600 text-white">
-            <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Greeting
+      <!-- Top Stage Navigator -->
+      <div class="telemetry-card rounded-xl px-4 py-2.5 mb-3 flex items-center justify-between overflow-x-auto gap-2">
+        <div class="flex items-center gap-2 md:gap-3 text-xs font-mono min-w-max">
+          <div id="stepBadgeGreeting" class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500 text-slate-950 font-bold">
+            00. GREETING
           </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
-          <div id="stepBadgeHr" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400">
-            <i data-lucide="users" class="w-3.5 h-3.5"></i> R1: HR & Culture
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
+          <div id="stepBadgeHr" class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-900 text-slate-400">
+            01. CULTURE & ACADEMICS
           </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
-          <div id="stepBadgeTech" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400">
-            <i data-lucide="terminal" class="w-3.5 h-3.5"></i> R2: Technical Deep Dive
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
+          <div id="stepBadgeTech" class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-900 text-slate-400">
+            02. TECHNICAL DRILL-DOWN
           </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
-          <div id="stepBadgeSituational" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400">
-            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> R3: Situational
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
+          <div id="stepBadgeSituational" class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-900 text-slate-400">
+            03. SITUATIONAL SCENARIOS
           </div>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
-          <div id="stepBadgeBehavioural" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400">
-            <i data-lucide="award" class="w-3.5 h-3.5"></i> R4: Behavioural (STAR)
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-600"></i>
+          <div id="stepBadgeBehavioural" class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-900 text-slate-400">
+            04. STAR RIGOR
           </div>
         </div>
 
-        <button id="btnFinishEarly" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition">
-          End & Evaluate
+        <button id="btnFinishEarly" class="px-3 py-1 rounded-lg text-[11px] font-mono text-slate-400 hover:text-rose-400 hover:bg-slate-900 transition flex items-center gap-1">
+          <i data-lucide="stop-circle" class="w-3.5 h-3.5"></i> Conclude & Audit
         </button>
       </div>
 
-      <!-- Chat Stream Window -->
-      <div class="flex-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-4 md:p-6 overflow-y-auto flex flex-col space-y-4 shadow-inner" id="chatStream">
-        <!-- Messages injected here dynamically -->
-      </div>
-
-      <!-- Input Bar -->
-      <div class="mt-4 bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col gap-2">
-        <div class="flex items-center gap-2">
-          <textarea id="candidateAnswerInput" rows="2" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none" placeholder="Type your answer, or use the microphone button to speak..."></textarea>
-          
-          <div class="flex flex-col gap-2">
-            <!-- Speech-to-text mic -->
-            <button id="btnMic" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition border border-slate-700" title="Click to speak (Microphone)">
-              <i data-lucide="mic" class="w-5 h-5 text-indigo-400"></i>
-            </button>
-            <!-- Send button -->
-            <button id="btnSendAnswer" class="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition shadow-lg shadow-indigo-600/25">
-              <i data-lucide="send" class="w-5 h-5"></i>
-            </button>
-          </div>
-        </div>
+      <!-- Split Screen: Left Cockpit & Right Feed -->
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         
-        <div class="flex items-center justify-between text-[11px] text-slate-500 px-1">
-          <span class="flex items-center gap-1 text-emerald-400">
-            <i data-lucide="shield" class="w-3 h-3"></i> Responsible AI Active: Accent, gender, and personal traits are excluded from grading.
-          </span>
-          <span id="speechStatus" class="text-cyan-400">Mic ready</span>
+        <!-- Left 4 Cols: Audio Telemetry & Responsible AI HUD -->
+        <div class="hidden lg:flex lg:col-span-4 flex-col gap-3">
+          
+          <!-- Interviewer Presence & Live Audio Spectrum -->
+          <div class="telemetry-card rounded-2xl p-4 flex flex-col items-center justify-between">
+            <div class="w-full flex items-center justify-between text-[11px] font-mono text-slate-400 mb-2">
+              <span class="flex items-center gap-1.5 text-amber-400 font-semibold">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> INTERVIEWER TELEMETRY
+              </span>
+              <span id="aiVoicePacingLabel" class="text-slate-500">VOICE ACTIVE</span>
+            </div>
+
+            <!-- Waveform Canvas -->
+            <div class="w-full h-24 waveform-box rounded-xl p-2 flex items-center justify-center relative overflow-hidden">
+              <canvas id="audioSpectrum" class="w-full h-full"></canvas>
+            </div>
+
+            <div class="w-full flex items-center justify-between text-[10px] font-mono text-slate-500 mt-2 px-1">
+              <span>ACOUSTIC SPECTRUM: 44.1kHz</span>
+              <span>SYNTHESIZER: READY</span>
+            </div>
+          </div>
+
+          <!-- Real-Time STAR Reactor (Lights up as candidate types or speaks!) -->
+          <div class="telemetry-card rounded-2xl p-4">
+            <div class="flex items-center justify-between text-[11px] font-mono mb-3">
+              <span class="text-white font-semibold flex items-center gap-1.5">
+                <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i> LIVE STAR REACTOR
+              </span>
+              <span class="text-[10px] text-slate-500">STRUCTURAL RIGOR</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div id="starSituation" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-500 transition-all flex items-center justify-between">
+                <span>[S] Situation</span>
+                <span class="indicator-dot w-2 h-2 rounded-full bg-slate-800"></span>
+              </div>
+              <div id="starTask" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-500 transition-all flex items-center justify-between">
+                <span>[T] Task</span>
+                <span class="indicator-dot w-2 h-2 rounded-full bg-slate-800"></span>
+              </div>
+              <div id="starAction" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-500 transition-all flex items-center justify-between">
+                <span>[A] Action</span>
+                <span class="indicator-dot w-2 h-2 rounded-full bg-slate-800"></span>
+              </div>
+              <div id="starResult" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-500 transition-all flex items-center justify-between">
+                <span>[R] Result</span>
+                <span class="indicator-dot w-2 h-2 rounded-full bg-slate-800"></span>
+              </div>
+            </div>
+            <p class="font-mono text-[10px] text-slate-500 mt-2 text-center">Indicators ignite live as key STAR elements are detected in your speech.</p>
+          </div>
+
+          <!-- Responsible AI Neutralizer Badge -->
+          <div class="telemetry-card rounded-2xl p-4 bg-emerald-950/20 border-emerald-500/20">
+            <div class="flex items-center gap-2 mb-2">
+              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+              <span class="font-mono text-xs font-bold text-emerald-300">DEMOGRAPHIC ISOLATION ACTIVE</span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Gender, vocal accent, physical appearance, and college prestige are strictly scrubbed before scoring. Evaluation is bounded purely to technical precision, structure, and communication clarity.
+            </p>
+            <div class="mt-2.5 flex items-center justify-between text-[10px] font-mono text-emerald-400/80 border-t border-emerald-500/20 pt-2">
+              <span>BIAS CHECK: PASSED</span>
+              <span>HASH: 8af47fb...</span>
+            </div>
+          </div>
+
         </div>
+
+        <!-- Right 8 Cols: Dialogue Feed & Speech Input -->
+        <div class="lg:col-span-8 flex flex-col h-full overflow-hidden">
+          
+          <!-- Dialogue Stream -->
+          <div id="chatStream" class="flex-1 telemetry-card rounded-2xl p-4 md:p-6 overflow-y-auto space-y-4 shadow-inner">
+            <!-- Messages inserted here dynamically -->
+          </div>
+
+          <!-- Input Console -->
+          <div class="mt-3 telemetry-card rounded-2xl p-3 flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+              <textarea id="candidateAnswerInput" rows="2" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500/60 resize-none font-sans" placeholder="Articulate your answer here, or click the microphone to speak..."></textarea>
+              
+              <div class="flex flex-col gap-2">
+                <!-- Speech Mic -->
+                <button id="btnMic" class="w-10 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center justify-center transition" title="Speak into microphone">
+                  <i data-lucide="mic" class="w-4 h-4 text-amber-400"></i>
+                </button>
+                <!-- Send -->
+                <button id="btnSendAnswer" class="w-10 h-10 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center transition shadow-lg shadow-amber-500/20 font-bold">
+                  <i data-lucide="send" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] font-mono text-slate-500 px-1">
+              <span id="speechStatus" class="flex items-center gap-1.5 text-cyan-400">
+                <i data-lucide="radio" class="w-3.5 h-3.5"></i> Mic ready (Click to speak)
+              </span>
+              <span class="text-slate-500">Press Enter to submit</span>
+            </div>
+          </div>
+
+        </div>
+
       </div>
 
     </section>
 
-    <!-- STEP 3: EVIDENCE-BASED REPORT & PROGRESS TRACKER -->
+    <!-- VIEW 3: EXECUTIVE READINESS DOSSIER & PROGRESS TRACKER -->
     <section id="stepReport" class="hidden max-w-5xl w-full mx-auto space-y-6">
       
       <!-- Top Scorecard -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="telemetry-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
           <div class="flex items-center gap-2 mb-2">
-            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Comprehensive Assessment Generated
+            <span class="font-mono text-[10px] px-2.5 py-1 rounded badge-emerald font-semibold uppercase tracking-wider">
+              ASSESSMENT COMPLETE // AUDIT CERTIFIED
             </span>
-            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              Bias-Mitigation Verified
+            <span class="font-mono text-[10px] px-2.5 py-1 rounded badge-amber font-semibold uppercase tracking-wider">
+              EVIDENCE VERIFIED
             </span>
           </div>
-          <h2 class="text-2xl md:text-3xl font-extrabold text-white" id="repCandidateTitle">Candidate Readiness Report</h2>
-          <p class="text-sm text-slate-400 mt-1" id="repVerdict">Strong Hire / Advanced Readiness</p>
+          <h2 class="font-display text-2xl md:text-3xl font-extrabold text-white" id="repCandidateTitle">
+            Candidate Career Readiness Dossier
+          </h2>
+          <p class="text-sm font-medium text-amber-400 mt-1" id="repVerdict">
+            Strong Hire / Advanced Engineering Readiness
+          </p>
         </div>
 
         <div class="flex items-center gap-6">
           <div class="text-center p-4 rounded-xl bg-slate-950 border border-slate-800">
-            <span class="text-xs text-slate-500 uppercase tracking-wider block">Overall Score</span>
-            <span class="text-3xl md:text-4xl font-black text-emerald-400" id="repOverallScore">88.5</span>
-            <span class="text-xs text-slate-400 block mt-0.5">/ 100</span>
+            <span class="font-mono text-[10px] text-slate-500 uppercase tracking-widest block">COMPOSITE SCORE</span>
+            <span class="font-display text-4xl font-extrabold text-emerald-400" id="repOverallScore">88.5</span>
+            <span class="font-mono text-[11px] text-slate-500 block mt-0.5">/ 100</span>
           </div>
-          <button id="btnRetake" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 transition">
-            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Retake Practice
+          <button id="btnRetake" class="px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider font-mono flex items-center gap-2 shadow-lg shadow-amber-500/20 transition">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> New Practice Loop
           </button>
         </div>
       </div>
 
-      <!-- Charts & Rubric Breakdown -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Charts: Radar & Historical Improvement -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
         
-        <!-- Radar Chart of Competencies -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i> Competency Rubric Scores
+        <!-- Radar Competency Chart (6 Cols) -->
+        <div class="md:col-span-6 telemetry-card rounded-2xl p-6">
+          <h3 class="font-display text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-4">
+            <i data-lucide="radar" class="w-4 h-4 text-cyan-400"></i> Competency Radar Analysis
           </h3>
           <div class="h-64 flex items-center justify-center">
             <canvas id="rubricRadarChart"></canvas>
           </div>
-          <div class="grid grid-cols-4 gap-2 mt-4 text-center text-xs">
+          <div class="grid grid-cols-4 gap-2 mt-4 text-center font-mono text-xs">
             <div class="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <span class="text-slate-500 block text-[10px]">Structure</span>
+              <span class="text-slate-500 block text-[10px]">STRUCT</span>
               <strong class="text-slate-200" id="metricStructure">85%</strong>
             </div>
             <div class="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <span class="text-slate-500 block text-[10px]">Relevance</span>
+              <span class="text-slate-500 block text-[10px]">RELEV</span>
               <strong class="text-slate-200" id="metricRelevance">90%</strong>
             </div>
             <div class="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <span class="text-slate-500 block text-[10px]">Depth</span>
+              <span class="text-slate-500 block text-[10px]">DEPTH</span>
               <strong class="text-slate-200" id="metricDepth">82%</strong>
             </div>
             <div class="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <span class="text-slate-500 block text-[10px]">Clarity</span>
+              <span class="text-slate-500 block text-[10px]">CLARITY</span>
               <strong class="text-slate-200" id="metricClarity">88%</strong>
             </div>
           </div>
         </div>
 
-        <!-- Measurable Improvement Over Sessions -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+        <!-- Longitudinal Progress Chart (6 Cols) -->
+        <div class="md:col-span-6 telemetry-card rounded-2xl p-6 flex flex-col justify-between">
           <div>
-            <h3 class="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-              <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i> Multi-Session Improvement Trajectory
+            <h3 class="font-display text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-1">
+              <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i> Multi-Session Growth Trajectory
             </h3>
-            <p class="text-xs text-slate-400 mb-4">Tracking performance gain across practice sessions.</p>
-            <div class="h-56">
+            <p class="font-mono text-[11px] text-slate-400 mb-4">Tracking measurable performance delta across sessions.</p>
+            <div class="h-64">
               <canvas id="progressLineChart"></canvas>
             </div>
           </div>
-          <p class="text-[11px] text-slate-500 mt-2 text-center">Scores recorded in local database for longitudinal tracking.</p>
+          <p class="font-mono text-[10px] text-slate-500 text-center mt-2">Historical practice sessions persisted to SQLite database.</p>
         </div>
 
       </div>
 
-      <!-- Grounded Evidence Trail & Actionable Guidance -->
+      <!-- Strengths & Growth Areas -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        <!-- Key Strengths -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <h3 class="text-sm font-semibold text-emerald-400 mb-3 flex items-center gap-2">
-            <i data-lucide="thumbs-up" class="w-4 h-4"></i> Observed Strengths
+        <div class="telemetry-card rounded-2xl p-6">
+          <h3 class="font-display text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i> Observed Technical Strengths
           </h3>
-          <ul id="repStrengthsList" class="space-y-2 text-xs text-slate-300">
-            <!-- Strengths -->
+          <ul id="repStrengthsList" class="space-y-2.5 text-xs text-slate-300">
+            <!-- List items -->
           </ul>
         </div>
 
-        <!-- Targeted Growth Areas -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <h3 class="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-2">
-            <i data-lucide="target" class="w-4 h-4"></i> Actionable Growth Recommendations
+        <div class="telemetry-card rounded-2xl p-6">
+          <h3 class="font-display text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+            <i data-lucide="target" class="w-4 h-4"></i> Actionable Growth Directives
           </h3>
-          <ul id="repSuggestionsList" class="space-y-2 text-xs text-slate-300">
-            <!-- Suggestions -->
+          <ul id="repSuggestionsList" class="space-y-2.5 text-xs text-slate-300">
+            <!-- List items -->
           </ul>
         </div>
 
       </div>
 
-      <!-- Verifiable Evidence Citations -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-        <h3 class="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-          <i data-lucide="file-check" class="w-4 h-4 text-indigo-400"></i> Evidence-Based Citations (Auditable Basis for Scoring)
+      <!-- Grounded Evidence Trail -->
+      <div class="telemetry-card rounded-2xl p-6">
+        <h3 class="font-display text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-2">
+          <i data-lucide="quote" class="w-4 h-4 text-indigo-400"></i> Verifiable Evidence Trail (Anti-Arbitrary Scoring Audit)
         </h3>
-        <p class="text-xs text-slate-400 mb-4">Every assessment score is mapped directly to actual excerpts from candidate statements to prevent arbitrary or unsupported judgments.</p>
+        <p class="font-mono text-xs text-slate-400 mb-4">Every deducted point and recommendation is grounded in exact quotations from your answers.</p>
         
         <div id="evidenceTrailList" class="space-y-3">
-          <!-- Citation rows -->
-        </div>
-      </div>
-
-      <!-- Responsible AI Audit Card -->
-      <div class="p-5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-start gap-4">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-          <i data-lucide="shield-alert" class="w-5 h-5"></i>
-        </div>
-        <div class="text-xs">
-          <h4 class="font-bold text-emerald-300 text-sm">Responsible AI & Bias Mitigation Audit: PASSED</h4>
-          <p class="text-slate-300 mt-1 leading-relaxed">
-            This candidate evaluation followed strict fairness controls. Demographics, perceived gender, regional accents, physical appearance, and college prestige bias were masked from the grading pipeline. Feedback is 100% grounded in technical precision, structure, and communication clarity.
-          </p>
+          <!-- Citations -->
         </div>
       </div>
 
@@ -379,38 +477,48 @@
 
   </main>
 
-  <!-- Settings Modal (API Key configuration) -->
-  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="telemetry-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-bold text-white text-base flex items-center gap-2">
-          <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i> Coach Settings
+        <h3 class="font-display font-bold text-white text-base flex items-center gap-2">
+          <i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i> Engine Configuration
         </h3>
         <button id="btnCloseSettings" class="text-slate-400 hover:text-white">
-          <i data-lucide="x" class="w-5 h-5"></i>
+          <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
-      <div class="space-y-4 text-xs">
+      <div class="space-y-4 text-xs font-mono">
         <div>
-          <label class="text-slate-300 block font-medium mb-1">Gemini API Key (Optional)</label>
-          <input type="password" id="inputApiKey" placeholder="AIzaSy..." class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500">
-          <p class="text-[11px] text-slate-500 mt-1">If blank, the system operates seamlessly with its built-in Intelligent Adaptive Engine (ideal for offline judging).</p>
+          <label class="text-slate-300 block mb-1">AI PROVIDER</label>
+          <select id="modalProviderSelect" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-amber-400 font-semibold focus:outline-none focus:border-amber-500">
+            <option value="gemini">Google Gemini (Gemini 1.5/2.0 Flash)</option>
+            <option value="groq">Groq Cloud (Llama-3.3-70B - Lightning Fast)</option>
+            <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+            <option value="local">Built-in Cognitive Engine (Offline / Local Heuristic)</option>
+          </select>
         </div>
 
         <div>
-          <label class="text-slate-300 block font-medium mb-1">Interview Voice Pacing</label>
-          <select id="selectVoiceRate" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500">
-            <option value="1.0">Normal (1.0x)</option>
-            <option value="0.9">Clear & Deliberate (0.9x)</option>
-            <option value="1.15">Brisk (1.15x)</option>
+          <label class="text-slate-300 block mb-1">API KEY (Optional)</label>
+          <input type="password" id="inputApiKey" placeholder="Paste Gemini / Groq / OpenAI Key..." class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-500">
+          <p class="text-[10px] text-slate-500 mt-1">If blank, the system runs with the ultra-fast Built-in Cognitive Engine with zero setup.</p>
+        </div>
+
+        <div>
+          <label class="text-slate-300 block mb-1">INTERVIEWER VOICE SPEED</label>
+          <select id="selectVoiceRate" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-500">
+            <option value="1.0">Executive Normal (1.0x)</option>
+            <option value="0.9">Deliberate & Measured (0.9x)</option>
+            <option value="1.15">Brisk Pace (1.15x)</option>
           </select>
         </div>
       </div>
 
       <div class="mt-6 flex justify-end">
-        <button id="btnSaveSettings" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition">
-          Save Settings
+        <button id="btnSaveSettings" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider font-mono transition">
+          Apply & Save
         </button>
       </div>
     </div>

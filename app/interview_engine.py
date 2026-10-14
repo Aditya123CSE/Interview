@@ -3,227 +3,340 @@ import os
 import json
 import httpx
 from typing import Dict, Any, List, Optional
-from app.responsible_ai import evaluate_response
+from app.responsible_ai import evaluate_response, detect_star_elements
 
 ROUNDS = [
-    {"id": "greeting", "name": "Greeting & Introduction", "order": 1},
-    {"id": "hr", "name": "Round 1: HR & Culture Fit", "order": 2},
-    {"id": "technical", "name": "Round 2: Technical Deep Dive", "order": 3},
-    {"id": "situational", "name": "Round 3: Situational & Problem-Solving", "order": 4},
-    {"id": "behavioural", "name": "Round 4: Behavioural (STAR)", "order": 5},
-    {"id": "completed", "name": "Interview Complete", "order": 6}
+    {"id": "greeting", "name": "Greeting & Executive Intro", "order": 1, "description": "Personalized welcome, background & motivation check"},
+    {"id": "hr", "name": "Round 1: Culture & Academic Journey", "order": 2, "description": "College achievements, balancing passions, and leadership"},
+    {"id": "technical", "name": "Round 2: Technical & Architectural Drill-down", "order": 3, "description": "Deep-dive into resume tech stack, algorithms, and trade-offs"},
+    {"id": "situational", "name": "Round 3: High-Stakes Situational Scenarios", "order": 4, "description": "Production outages, conflict resolution, crisis management"},
+    {"id": "behavioural", "name": "Round 4: Behavioural (STAR Rigor)", "order": 5, "description": "Ownership, ambiguity handling, stakeholder alignment"},
+    {"id": "completed", "name": "Executive Evaluation Dossier", "order": 6, "description": "Bias-audited rubric feedback, radar metrics, and rewrite recommendations"}
 ]
 
+# Intelligent Domain Contexts for Dynamic Adaptation
+DOMAIN_CHALLENGES = {
+    "Fintech & High-Scale Systems": {
+        "technical": "handling distributed transactions across microservices, ensuring idempotency, preventing double-spend anomalies, and p99 latency optimization under 15ms",
+        "situational": "a payment gateway reconciliation failure during peak flash sale where 3% of webhooks are dropped and database locks spike"
+    },
+    "Cloud SaaS & Platform": {
+        "technical": "multi-tenant data isolation, rate-limiting algorithms (leaky bucket vs token bucket), connection pooling, and zero-downtime rolling migrations",
+        "situational": "a tenant executing an unindexed recursive query that starves shared database CPU cores and triggers cascading timeouts"
+    },
+    "AI Platforms & Intelligent Apps": {
+        "technical": "low-latency LLM inference streaming, semantic cache invalidation, vector embeddings quantization, and guarding against prompt injection",
+        "situational": "an AI agent entering an infinite tool-calling loop that incurs 10x compute billing in 20 minutes and crashes the upstream queuing worker"
+    },
+    "E-Commerce & Logistics": {
+        "technical": "inventory decrement race conditions, distributed caching strategies using Redis cluster, and eventual consistency in checkout pipelines",
+        "situational": "stock overselling for a high-demand item due to database read-replica lag during an international product drop"
+    },
+    "Healthtech Systems": {
+        "technical": "end-to-end encryption for HIPAA/GDPR health records, audit logging immutability, and fault-tolerant ingestion of real-time telemetry",
+        "situational": "critical diagnostic pipeline failing to process medical sensor telemetry within the mandated 3-second alert window"
+    }
+}
+
 def generate_greeting_message(session_data: Dict[str, Any]) -> str:
-    """Generates the realistic first interview message greeting the candidate."""
+    """Generates the authentic, highly professional first interview greeting."""
     name = session_data.get("candidate_name", "Candidate")
     college = session_data.get("college", "your university")
-    studies = session_data.get("studies", "your technical studies")
-    target_role = session_data.get("target_role", "Software Engineer")
-    target_domain = session_data.get("target_domain", "Technology")
-    skills = session_data.get("skills", [])
-    hobbies = session_data.get("hobbies", [])
-    
-    skills_preview = ", ".join(skills[:3]) if skills else "modern technologies"
-    hobby_mention = f" and your personal interests like {hobbies[0]}" if hobbies else ""
-    
-    greeting = (
-        f"Hello {name}! A warm welcome to your interview for the {target_role} position "
-        f"in our {target_domain} division. I've had the pleasure of reviewing your resume, noting your background in "
-        f"{studies} from {college}, along with your work in {skills_preview}{hobby_mention}.\n\n"
-        f"We have structured this interview into four progressive rounds: HR & Culture, Technical Deep Dive, "
-        f"Situational Scenarios, and Behavioural reflection.\n\n"
-        f"To kick things off: How are you feeling today, and could you walk me through a brief introduction "
-        f"covering your journey, your core strengths, and what draws you to this role?"
+    studies = session_data.get("studies", "your engineering studies")
+    target_role = session_data.get("target_role", "Software Development Engineer")
+    target_domain = session_data.get("target_domain", "Fintech & High-Scale Systems")
+    skills = session_data.get("skills", ["Python", "Algorithms"])
+    hobbies = session_data.get("hobbies", ["Competitive Programming"])
+
+    skills_highlight = ", ".join(skills[:3]) if skills else "modern software engineering"
+    hobby_ref = f", as well as your dedication to {hobbies[0]}" if hobbies else ""
+
+    return (
+        f"Hello {name}, welcome! I'm your AI Interview Coach. It's a pleasure to connect with you today "
+        f"for the {target_role} position within our {target_domain} engineering division.\n\n"
+        f"I've carefully inspected your background in {studies} from {college}. Your portfolio shows notable experience "
+        f"in {skills_highlight}{hobby_ref}.\n\n"
+        f"Our evaluation today will mirror an executive engineering loop across 4 distinct stages: Culture & Academic Journey, "
+        f"Technical Deep Dive, High-Stakes Situational Triage, and Behavioural STAR Rigor. Every response is assessed transparently "
+        f"under our Responsible AI Bias-Mitigated Rubric.\n\n"
+        f"To begin: How has your day been so far, and could you introduce yourself by walking me through the pivotal projects "
+        f"and personal motivations that make you a strong fit for this role?"
     )
-    return greeting
+
+def extract_key_concepts(text: str) -> List[str]:
+    """Extracts nouns, technologies, and technical concepts mentioned in candidate response."""
+    words = re.findall(r'\b[A-Za-z0-9_-]{3,}\b', text)
+    tech_set = {
+        "python", "fastapi", "react", "docker", "redis", "postgres", "postgresql", "sql", "mongodb",
+        "kubernetes", "aws", "gcp", "kafka", "rest", "graphql", "microservices", "caching", "index",
+        "latency", "throughput", "concurrency", "lock", "async", "celery", "django", "node", "express",
+        "git", "ci/cd", "encryption", "auth", "jwt", "testing", "unit test", "mock", "algorithm", "dsa"
+    }
+    extracted = [w for w in words if w.lower() in tech_set]
+    return list(dict.fromkeys(extracted))
 
 def generate_next_question(
-    session_data: Dict[str, Any], 
-    current_round: str, 
+    session_data: Dict[str, Any],
+    current_round: str,
     last_candidate_answer: str,
     round_turn_count: int,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    provider: str = "gemini"
 ) -> Dict[str, Any]:
     """
-    Decides the next question or follow-up based dynamically on the candidate's last answer.
-    Returns:
-    {
-        "question": str,
-        "is_follow_up": bool,
-        "new_round": str,
-        "feedback": dict (evidence-based evaluation of last answer)
-    }
+    Evaluates the candidate's last answer and dynamically generates the next probing question.
+    Connects to external LLM if configured; otherwise runs a multi-layered cognitive heuristic engine.
     """
     target_role = session_data.get("target_role", "Software Engineer")
-    skills = session_data.get("skills", ["Python", "Algorithms"])
-    hobbies = session_data.get("hobbies", ["Problem Solving"])
-    college = session_data.get("college", "College")
-    
-    # 1. Evaluate the candidate's previous response with responsible AI rubric
+    target_domain = session_data.get("target_domain", "Fintech & High-Scale Systems")
+    skills = session_data.get("skills", ["Python", "FastAPI"])
+    hobbies = session_data.get("hobbies", ["Competitive Programming"])
+    college = session_data.get("college", "Poornima College of Engineering")
+    candidate_name = session_data.get("candidate_name", "Candidate")
+
+    # 1. Rigorous Evidence-Based Evaluation
     eval_result = evaluate_response(
-        question="Interview question",
+        question="Interview Inquiry",
         candidate_answer=last_candidate_answer,
         round_name=current_round,
         target_role=target_role
     )
-    
-    answer_lower = last_candidate_answer.lower()
-    word_count = len(last_candidate_answer.split())
-    is_follow_up = False
-    next_round = current_round
-    
-    # Attempt LLM call if API key is present
-    if api_key:
-        llm_resp = call_gemini_or_openai(
-            api_key=api_key,
+
+    # 2. Check if external LLM should be called
+    if api_key and api_key.strip():
+        llm_result = query_external_llm(
+            api_key=api_key.strip(),
+            provider=provider,
             session_data=session_data,
             current_round=current_round,
             last_answer=last_candidate_answer,
             round_turn_count=round_turn_count
         )
-        if llm_resp:
+        if llm_result:
             return {
-                "question": llm_resp["question"],
-                "is_follow_up": llm_resp.get("is_follow_up", False),
-                "new_round": llm_resp.get("new_round", current_round),
-                "feedback": eval_result
+                "question": llm_result["question"],
+                "is_follow_up": llm_result.get("is_follow_up", False),
+                "new_round": llm_result.get("new_round", current_round),
+                "feedback": eval_result,
+                "exemplar_rewrite": llm_result.get("exemplar_rewrite", generate_exemplar_rewrite(last_candidate_answer, current_round, target_role))
             }
 
-    # Intelligent Adaptive Engine (Rule-heuristic fallback with dynamic alterations)
+    # 3. High-Craft Adaptive Cognitive Engine (Offline / Local)
+    answer_clean = last_candidate_answer.strip()
+    words = answer_clean.split()
+    word_count = len(words)
+    extracted_concepts = extract_key_concepts(answer_clean)
+    star_data = detect_star_elements(answer_clean)
+
+    is_follow_up = False
+    next_round = current_round
+    question = ""
+
+    # GREETING -> HR
     if current_round == "greeting":
         next_round = "hr"
-        hobby_str = hobbies[0] if hobbies else "your hobbies"
+        primary_hobby = hobbies[0] if hobbies else "your personal projects"
         question = (
-            f"Thank you for that introduction, {session_data.get('candidate_name', 'there')}! "
-            f"Transitioning to Round 1 (HR & Culture): During your studies at {college}, "
-            f"how did balancing your academic workload alongside {hobby_str} shape your discipline "
-            f"and collaboration skills when working on team initiatives?"
+            f"Thank you for that background, {candidate_name}. Let's transition into Round 1: Culture & Academic Journey.\n\n"
+            f"During your tenure at {college}, how did you balance rigorous academic coursework with your dedication to {primary_hobby}? "
+            f"Can you recount a specific situation where you had to lead a collegiate team or hackathon initiative under significant time pressure, "
+            f"and how you ensured everyone stayed aligned on the deliverable?"
         )
-        
+
+    # HR ROUND
     elif current_round == "hr":
-        if round_turn_count == 0 and word_count < 35:
-            # Dynamic follow-up for brief answer
+        if round_turn_count == 0 and word_count < 40:
             is_follow_up = True
             question = (
-                f"That's a good start. Could you expand on a specific instance where your team hit an impasse "
-                f"or disagreement on a college project, and how you personally helped reconcile differing viewpoints?"
+                f"That gives a broad overview, but let's dive into specifics. When conflicts or disagreements on engineering approach "
+                f"emerged among your peers, what concrete framework did you use to evaluate options objectively rather than letting it become personal?"
             )
         else:
-            # Advance to Technical Round
             next_round = "technical"
-            primary_skill = skills[0] if skills else "Software Engineering"
-            secondary_skill = skills[1] if len(skills) > 1 else "Data Structures"
+            s1 = skills[0] if skills else "Python"
+            s2 = skills[1] if len(skills) > 1 else "Database Design"
+            domain_ctx = DOMAIN_CHALLENGES.get(target_domain, {}).get("technical", "architectural scaling and low latency")
             question = (
-                f"Excellent. Let's move into Round 2: Technical Deep Dive for the {target_role} role. "
-                f"Your resume highlights experience with {primary_skill} and {secondary_skill}. "
-                f"Can you walk me through a complex technical challenge you solved using {primary_skill}? "
-                f"Please discuss your architectural approach, why you chose that design, and any performance trade-offs."
+                f"Very insightful perspective on collaboration. Now moving into Round 2: Technical & Architectural Drill-down.\n\n"
+                f"Your resume highlights proficiency in {s1} and {s2}. In our {target_domain} systems, we place high emphasis on {domain_ctx}.\n\n"
+                f"Walk me through the most technically demanding service or feature you engineered with {s1}. "
+                f"Specifically explain: What was the architectural design, how did you handle state or data persistence, "
+                f"and what critical performance trade-offs did you make?"
             )
-            
+
+    # TECHNICAL ROUND
     elif current_round == "technical":
-        # Dynamic alteration based on what candidate answered
-        detected_tech = None
-        for kw in ["database", "sql", "cache", "redis", "api", "docker", "react", "async", "index", "concurrency", "security", "mongodb", "fastapi"]:
-            if kw in answer_lower:
-                detected_tech = kw
-                break
-                
         if round_turn_count == 0:
             is_follow_up = True
-            if detected_tech:
+            if extracted_concepts:
+                highlighted = ", ".join(c.upper() for c in extracted_concepts[:2])
                 question = (
-                    f"You specifically highlighted working with {detected_tech.upper()}. "
-                    f"In that implementation, how did you handle edge cases such as concurrency, failure recovery, "
-                    f"or high-throughput bottlenecks? What metrics did you use to validate that the solution was robust?"
+                    f"You specifically highlighted working with {highlighted}. That's directly relevant.\n\n"
+                    f"Let's stress-test that design: Suppose traffic spikes by 20x during a market event, leading to queue saturation "
+                    f"and connection timeouts on {highlighted}. How would your system behave? Would it degrade gracefully, shed load, "
+                    f"or fail over? What telemetry metrics (e.g. p95/p99 latency, error budgets) would you monitor?"
                 )
             else:
                 question = (
-                    f"You described the high-level workflow. Let's drill into the fundamentals: "
-                    f"What was the time and space complexity of your primary data operations, and how would you optimize "
-                    f"it if the dataset or user base grew by an order of magnitude?"
+                    f"You explained the high-level workflow. Let's delve into the computational complexity: "
+                    f"What is the Big-O time and space complexity of your primary data operations? If you had to optimize this for memory-constrained "
+                    f"environments or millions of concurrent active sessions, what specific data structures or caching patterns would you swap in?"
                 )
         else:
-            # Advance to Situational
             next_round = "situational"
-            question = (
-                f"Great technical discussion. Now entering Round 3: Situational & Problem-Solving. "
-                f"Scenario: Imagine you deployed a critical feature to production for our {session_data.get('target_domain', 'Core')} service. "
-                f"Within 15 minutes, end-user error rates spike to 12% and API response latency jumps by 400%. "
-                f"What is your step-by-step methodology to triage, communicate, mitigate, and conduct a post-mortem?"
+            domain_scenario = DOMAIN_CHALLENGES.get(target_domain, {}).get(
+                "situational", 
+                "a production outage where latency spikes by 400% after an unscheduled hotfix deployment"
             )
-            
+            question = (
+                f"Excellent technical depth. Now let's test your problem-solving instincts under pressure in Round 3: High-Stakes Situational Scenarios.\n\n"
+                f"Here is your incident scenario: In our {target_domain} infrastructure, {domain_scenario}.\n\n"
+                f"Executive stakeholders are demanding updates, users are tweeting complaints, and the on-call engineer suggests rolling back "
+                f"while another insists on patching forward in production.\n\n"
+                f"What is your minute-by-minute protocol to triage the incident, stabilize the system, communicate with stakeholders, and prevent recurrence?"
+            )
+
+    # SITUATIONAL ROUND
     elif current_round == "situational":
-        if round_turn_count == 0 and ("rollback" not in answer_lower and "monitoring" not in answer_lower):
-            # Dynamic follow-up if candidate missed observability or rollback
+        if round_turn_count == 0 and ("rollback" not in answer_clean.lower() and "telemetry" not in answer_clean.lower()):
             is_follow_up = True
             question = (
-                f"You laid out a mitigation strategy. How do you balance the trade-off between immediately rolling back "
-                f"versus keeping the system live to inspect telemetry, logs, and capture crash dumps?"
+                f"You outlined a remediation plan. However, how do you handle the immediate operational dilemma: "
+                f"Do you enforce an immediate automated rollback to restore customer uptime, or do you keep the faulty instance quarantined "
+                f"in a sandbox to capture heap dumps and telemetry for root cause analysis?"
             )
         else:
-            # Advance to Behavioural (STAR)
             next_round = "behavioural"
             question = (
-                f"Very methodical. Let's proceed to our final stage, Round 4: Behavioural Assessment. "
-                f"Using the STAR format (Situation, Task, Action, Result), tell me about a time you committed to an ambitious "
-                f"technical deadline, faced unexpected blockers, and how you managed stakeholder expectations to deliver impact."
+                f"Structured incident triage. Let's advance to our final stage, Round 4: Behavioural Rigor (STAR Method).\n\n"
+                f"I'd like you to share a story about a project where you committed to an aggressive technical milestone, encountered unforeseen "
+                f"technical roadblocks or team capacity loss, and had to renegotiate scope while ensuring the core value was preserved.\n\n"
+                f"Structure your response rigorously using the STAR framework: Situation, Task, Action, and measurable Result."
             )
-            
+
+    # BEHAVIOURAL ROUND (STAR)
     elif current_round == "behavioural":
-        if round_turn_count == 0 and not eval_result["star_analysis"]["result"]:
-            # Follow-up: candidate didn't mention the Result
+        if round_turn_count == 0 and not star_data["result"]:
             is_follow_up = True
             question = (
-                f"You clearly outlined the Situation, Task, and your Action. What was the measurable Result or quantitative outcome "
-                f"of your initiative, and what is the key lesson you carry into your next engineering role?"
+                f"You've clearly articulated the Situation, Task, and the Action you took. However, I want to hear about the Result.\n\n"
+                f"What were the quantifiable business or technical outcomes (e.g. latency reduced by X%, uptime restored, features shipped on time)? "
+                f"And reflecting back, what is the single biggest lesson you took away from that experience?"
             )
         else:
-            # Complete the interview
             next_round = "completed"
             question = (
-                f"Thank you, {session_data.get('candidate_name', 'there')}! You have successfully completed all four rounds "
-                f"of the interview. I am compiling your comprehensive, evidence-based feedback report, rubric scoring, "
-                f"and Responsible AI audit summary right now."
+                f"Thank you, {candidate_name}. That concludes our 4-round interview simulation loop!\n\n"
+                f"I have recorded all transcripts, conducted our Responsible AI Bias-Mitigation audit, and compiled your "
+                f"comprehensive Executive Readiness Dossier, complete with competency radar analysis, verbatim citations, "
+                f"and staff-level answer rewrites."
             )
-            
+
     return {
         "question": question,
         "is_follow_up": is_follow_up,
         "new_round": next_round,
-        "feedback": eval_result
+        "feedback": eval_result,
+        "exemplar_rewrite": generate_exemplar_rewrite(last_candidate_answer, current_round, target_role)
     }
 
-def call_gemini_or_openai(
-    api_key: str, 
-    session_data: Dict[str, Any], 
-    current_round: str, 
-    last_answer: str, 
+def generate_exemplar_rewrite(candidate_answer: str, round_name: str, target_role: str) -> str:
+    """Provides a Staff-Engineer level rewrite demonstrating how an elite candidate would articulate the same point."""
+    words = candidate_answer.split()
+    if len(words) < 15:
+        return (
+            "Staff-Level Benchmark: 'In our architecture, we identified high latency as the primary bottleneck. "
+            "I spearheaded the migration to an asynchronous event-driven pipeline with Redis caching and connection pooling, "
+            "which reduced p99 latency from 450ms to 78ms and supported 4x higher throughput without increasing cloud spend.'"
+        )
+    return (
+        f"Staff-Level Benchmark ({round_name.upper()}): 'When addressing this challenge, my objective was both immediate reliability "
+        f"and long-term maintainability. I decomposed the problem into telemetry gathering, hypothesis testing, and controlled remediation. "
+        f"By establishing quantifiable SLAs and automated circuit breakers, we mitigated operational risk while maintaining 99.98% service uptime.'"
+    )
+
+def query_external_llm(
+    api_key: str,
+    provider: str,
+    session_data: Dict[str, Any],
+    current_round: str,
+    last_answer: str,
     round_turn_count: int
 ) -> Optional[Dict[str, Any]]:
-    """Helper to query Gemini API if API key is provided."""
+    """Dispatches request to Gemini, Groq, or OpenAI compatible endpoints."""
+    system_prompt = (
+        f"You are a Senior Principal Engineer and Responsible AI Interview Coach evaluating a candidate for: {session_data.get('target_role')}. "
+        f"Candidate Background: College: {session_data.get('college')}, Studies: {session_data.get('studies')}, "
+        f"Skills: {session_data.get('skills')}, Hobbies: {session_data.get('hobbies')}. "
+        f"Current Round: {current_round}. Turns in current round: {round_turn_count}.\n"
+        f"Responsible AI Mandate: Completely ignore gender, accent, nationality, college pedigree, or identity markers. "
+        f"Evaluate purely on response structure (STAR), technical depth, and actionable clarity.\n"
+        f"Task: Generate the next dynamic interview response. If the candidate's answer requires probing, ask an adaptive follow-up. "
+        f"If the round is satisfied, transition professionally to the next round.\n"
+        f"Respond in valid JSON format with keys:\n"
+        f"- \"question\" (string): the exact spoken question to the candidate\n"
+        f"- \"is_follow_up\" (bool): true if adapting/drilling down on their previous response\n"
+        f"- \"new_round\" (string): one of ['hr', 'technical', 'situational', 'behavioural', 'completed']\n"
+        f"- \"exemplar_rewrite\" (string): a Staff-level model response demonstrating how an elite engineer would answer."
+    )
+
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        prompt = (
-            f"You are an expert Responsible AI Interviewer conducting a mock interview for role: {session_data.get('target_role')}. "
-            f"Candidate background: College: {session_data.get('college')}, Studies: {session_data.get('studies')}, "
-            f"Skills: {session_data.get('skills')}, Hobbies: {session_data.get('hobbies')}. "
-            f"Current Round: {current_round}. Turn count in this round: {round_turn_count}. "
-            f"Candidate's previous response: \"{last_answer}\".\n"
-            f"Instruction: Generate the next interview question. If the candidate's answer was interesting or missed details, "
-            f"ask an adaptive follow-up. If it is time to move to the next round, transition professionally. "
-            f"Output strictly valid JSON with keys: \"question\" (string), \"is_follow_up\" (bool), \"new_round\" (one of: 'hr', 'technical', 'situational', 'behavioural', 'completed')."
-        )
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"response_mime_type": "application/json"}
-        }
-        with httpx.Client(timeout=10.0) as client:
-            resp = client.post(url, json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                return json.loads(text)
-    except Exception:
-        pass
+        # Provider 1: Groq (OpenAI format, blazing fast)
+        if provider == "groq" or (api_key.startswith("gsk_")):
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Candidate's previous response: \"{last_answer}\""}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.4
+            }
+            with httpx.Client(timeout=12.0) as client:
+                res = client.post(url, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data["choices"][0]["message"]["content"]
+                    return json.loads(content)
+
+        # Provider 2: Google Gemini
+        elif provider == "gemini" or (not api_key.startswith("sk-") and not api_key.startswith("gsk_")):
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            payload = {
+                "contents": [
+                    {"role": "user", "parts": [{"text": f"{system_prompt}\nCandidate answer: \"{last_answer}\""}]}
+                ],
+                "generationConfig": {"response_mime_type": "application/json", "temperature": 0.4}
+            }
+            with httpx.Client(timeout=12.0) as client:
+                res = client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data["candidates"][0]["content"]["parts"][0]["text"]
+                    return json.loads(content)
+
+        # Provider 3: OpenAI
+        elif provider == "openai" or api_key.startswith("sk-"):
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Candidate's previous response: \"{last_answer}\""}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.4
+            }
+            with httpx.Client(timeout=12.0) as client:
+                res = client.post(url, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data["choices"][0]["message"]["content"]
+                    return json.loads(content)
+
+    except Exception as err:
+        print(f"[LLM Query Error] {err}")
     return None
